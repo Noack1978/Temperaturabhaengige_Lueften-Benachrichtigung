@@ -1,1 +1,244 @@
-# Hier kommt dein funktionierender YAML-Blueprint-Code rein
+blueprint:
+  name: Lüften & Fenster schließen erweitert
+  description: |
+    Sendet Benachrichtigungen zum Lüften oder Schließen der Fenster,
+    wenn die Außentemperatur im Verhältnis zur Innentemperatur liegt.
+
+    Funktionen:
+    - Zwei konfigurierbare Uhrzeiten
+    - Auswahl aktiver Wochentage
+    - Benachrichtigung bei Temperaturdifferenz
+    - Optional für Lüften & Schließen
+    - Auswahl mehrerer Geräte & Fenster-Sensoren
+    - Optional anhaltende Benachrichtigung (persistent)
+    - Optional Alexa-Sprachausgabe
+  domain: automation
+  input:
+    aussensensor:
+      name: Außentemperatur-Sensor
+      selector:
+        entity:
+          domain: sensor
+    innensensor:
+      name: Innentemperatur-Sensor oder Helfer für Mittelwert
+      selector:
+        entity:
+          domain: sensor
+    fenster:
+      name: Fenster-Sensoren (binary_sensor)
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+    lueften_aktiv:
+      name: Benachrichtigung "Lüften" aktivieren
+      default: true
+      selector:
+        boolean: {}
+    schliessen_aktiv:
+      name: Benachrichtigung "Schließen" aktivieren
+      default: true
+      selector:
+        boolean: {}
+    diff_lueften:
+      name: Temperaturdifferenz zum Lüften (Innen - Außen)
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "°C"
+    diff_schliessen:
+      name: Temperaturdifferenz zum Schließen (Außen - Innen)
+      default: 1
+      selector:
+        number:
+          min: 0
+          max: 10
+          unit_of_measurement: "°C"
+    mobile_devices:
+      name: Mobilgeräte für Benachrichtigung
+      selector:
+        device:
+          integration: mobile_app
+          multiple: true
+    trigger_time_1:
+      name: Erste Uhrzeit
+      default: "06:00:00"
+      selector:
+        time: {}
+    trigger_time_2:
+      name: Zweite Uhrzeit
+      default: "19:00:00"
+      selector:
+        time: {}
+    active_days:
+      name: Aktive Wochentage
+      default:
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Montag
+              value: mon
+            - label: Dienstag
+              value: tue
+            - label: Mittwoch
+              value: wed
+            - label: Donnerstag
+              value: thu
+            - label: Freitag
+              value: fri
+            - label: Samstag
+              value: sat
+            - label: Sonntag
+              value: sun
+    persistent_notification:
+      name: Companion App – anhaltende Benachrichtigung?
+      default: false
+      selector:
+        boolean: {}
+    alexa_aktiv:
+      name: Alexa-Sprachausgabe aktivieren?
+      default: false
+      selector:
+        boolean: {}
+    alexa_geraete:
+      name: Alexa Geräte (alexa_media)
+      selector:
+        entity:
+          integration: alexa_media
+          domain: media_player
+          multiple: true
+
+trigger:
+  - platform: time
+    at: !input trigger_time_1
+  - platform: time
+    at: !input trigger_time_2
+  - platform: numeric_state
+    entity_id: !input aussensensor
+    above: !input innensensor
+
+variables:
+  aussensensor_entity: !input aussensensor
+  innensensor_entity: !input innensensor
+  fensterliste: !input fenster
+  aussentemp: "{{ states(aussensensor_entity) | float(15) }}"
+  innentemp: "{{ states(innensensor_entity) | float(20) }}"
+  lueften_aktiv: !input lueften_aktiv
+  schliessen_aktiv: !input schliessen_aktiv
+  diff_lueften: !input diff_lueften
+  diff_schliessen: !input diff_schliessen
+  aktive_wochentage: !input active_days
+  persistent_notification: !input persistent_notification
+  alexa_aktiv: !input alexa_aktiv
+  alexa_geraete: !input alexa_geraete
+
+condition:
+  - condition: template
+    value_template: >
+      {% set day = now().weekday() %}
+      {% set map = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] %}
+      {{ map[day] in aktive_wochentage }}
+
+action:
+  - if:
+      - "{{ lueften_aktiv }}"
+      - "{{ aussentemp + diff_lueften < innentemp }}"
+    then:
+      - repeat:
+          for_each: !input mobile_devices
+          sequence:
+            - variables:
+                notify_target: >
+                  {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                     | lower
+                     | replace('ä', 'a')
+                     | replace('ö', 'o')
+                     | replace('ü', 'u')
+                     | replace('ß', 'ss')
+                     | replace("'", '_')
+                     | replace(' ', '_')
+                     | regex_replace(find='[^a-z0-9_]', replace='') }}
+            - service: "{{ notify_target }}"
+              data:
+                message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+      - if: "{{ persistent_notification }}"
+        then:
+          - repeat:
+              for_each: !input mobile_devices
+              sequence:
+                - service: "{{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                    | lower | replace('ä','a') | replace('ö','o') | replace('ü','u')
+                    | replace('ß','ss') | replace(\"'\",'_') | replace(' ', '_')
+                    | regex_replace(find='[^a-z0-9_]', replace='') }}"
+                  data:
+                    message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+                    title: "Lüften empfohlen"
+                    data:
+                      persistent: true
+                      notification_id: "lueften_hinweis"
+      - if: "{{ alexa_aktiv }}"
+        then:
+          - service: notify.alexa_media
+            data:
+              target: !input alexa_geraete
+              message: "Es ist Zeit zu lüften. Draußen ist es kühler als drinnen."
+              data:
+                type: tts
+
+  - if:
+      - "{{ schliessen_aktiv }}"
+      - "{{ aussentemp - diff_schliessen > innentemp }}"
+      - condition: template
+        value_template: >
+          {{ fensterliste | select('is_state', 'on') | list | count > 0 }}
+    then:
+      - repeat:
+          for_each: !input mobile_devices
+          sequence:
+            - variables:
+                notify_target: >
+                  {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                     | lower
+                     | replace('ä', 'a')
+                     | replace('ö', 'o')
+                     | replace('ü', 'u')
+                     | replace('ß', 'ss')
+                     | replace("'", '_')
+                     | replace(' ', '_')
+                     | regex_replace(find='[^a-z0-9_]', replace='') }}
+            - service: "{{ notify_target }}"
+              data:
+                message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+      - if: "{{ persistent_notification }}"
+        then:
+          - repeat:
+              for_each: !input mobile_devices
+              sequence:
+                - service: "{{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                    | lower | replace('ä','a') | replace('ö','o') | replace('ü','u')
+                    | replace('ß','ss') | replace(\"'\",'_') | replace(' ', '_')
+                    | regex_replace(find='[^a-z0-9_]', replace='') }}"
+                  data:
+                    message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+                    title: "Fenster schließen"
+                    data:
+                      persistent: true
+                      notification_id: "fenster_hinweis"
+      - if: "{{ alexa_aktiv }}"
+        then:
+          - service: notify.alexa_media
+            data:
+              target: !input alexa_geraete
+              message: "Bitte Fenster schließen. Draußen ist es wärmer als drinnen."
+              data:
+                type: tts
+
+mode: single
