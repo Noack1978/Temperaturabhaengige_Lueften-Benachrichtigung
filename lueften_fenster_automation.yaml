@@ -171,19 +171,11 @@ action:
                 message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
       - if: "{{ persistent_notification }}"
         then:
-          - repeat:
-              for_each: !input mobile_devices
-              sequence:
-                - service: "{{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                    | lower | replace('ä','a') | replace('ö','o') | replace('ü','u')
-                    | replace('ß','ss') | replace(\"'\",'_') | replace(' ', '_')
-                    | regex_replace(find='[^a-z0-9_]', replace='') }}"
-                  data:
-                    message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
-                    title: "Lüften empfohlen"
-                    data:
-                      persistent: true
-                      notification_id: "lueften_hinweis"
+          - service: persistent_notification.create
+            data:
+              message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+              title: "Lüften empfohlen"
+              notification_id: "lueften_hinweis"
       - if: "{{ alexa_aktiv }}"
         then:
           - service: notify.alexa_media
@@ -219,19 +211,11 @@ action:
                 message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
       - if: "{{ persistent_notification }}"
         then:
-          - repeat:
-              for_each: !input mobile_devices
-              sequence:
-                - service: "{{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                    | lower | replace('ä','a') | replace('ö','o') | replace('ü','u')
-                    | replace('ß','ss') | replace(\"'\",'_') | replace(' ', '_')
-                    | regex_replace(find='[^a-z0-9_]', replace='') }}"
-                  data:
-                    message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
-                    title: "Fenster schließen"
-                    data:
-                      persistent: true
-                      notification_id: "fenster_hinweis"
+          - service: persistent_notification.create
+            data:
+              message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+              title: "Fenster schließen"
+              notification_id: "fenster_hinweis" 
       - if: "{{ alexa_aktiv }}"
         then:
           - service: notify.alexa_media
