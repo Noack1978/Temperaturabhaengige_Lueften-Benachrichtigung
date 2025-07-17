@@ -11,6 +11,7 @@ Dieser Blueprint sendet Benachrichtigungen zum Lüften oder Fenster-Schließen b
 - Mehrfachauswahl von mobilen Geräten für Push-Nachrichten
 - Anhaltende Benachrichtigung (Companion App, optional)
 - Alexa-Sprachausgabe (alexa_media, optional)
+- Konfigurierbare Mindest-Innentemperatur zur Auslösung der Benachrichtigungen
 
 ## 📥 Import in Home Assistant
 
@@ -21,13 +22,6 @@ Du kannst diesen Blueprint direkt über My Home Assistant importieren:
 Oder folgende URL kopieren und in home assistant manuell importieren
 ```
 https://raw.githubusercontent.com/Noack1978/Home-assistant-blueprints/main/lueften_fenster_automation.yaml
-```
-
-## 🗂️ Ablageort
-
-Pfad im Repository:
-```
-blueprints/automation/Noack1978/lueften_fenster_automation.yaml
 ```
 
 ## 📝 Hinweise
