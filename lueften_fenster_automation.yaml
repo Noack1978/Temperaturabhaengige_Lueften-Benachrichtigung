@@ -12,6 +12,7 @@ blueprint:
     - Auswahl mehrerer Geräte & Fenster-Sensoren
     - Optional anhaltende Benachrichtigung (persistent)
     - Optional Alexa-Sprachausgabe
+    - Mindestwert für Innentemperatur bei Lüftung
   domain: automation
   input:
     aussensensor:
@@ -55,6 +56,14 @@ blueprint:
         number:
           min: 0
           max: 10
+          unit_of_measurement: "°C"
+    min_innentemperatur:
+      name: Mindest-Innentemperatur für Lüftung
+      default: 20
+      selector:
+        number:
+          min: 10
+          max: 30
           unit_of_measurement: "°C"
     mobile_devices:
       name: Mobilgeräte für Benachrichtigung
@@ -139,6 +148,7 @@ variables:
   persistent_notification: !input persistent_notification
   alexa_aktiv: !input alexa_aktiv
   alexa_geraete: !input alexa_geraete
+  min_innentemperatur: !input min_innentemperatur
 
 condition:
   - condition: template
@@ -151,6 +161,7 @@ action:
   - if:
       - "{{ lueften_aktiv }}"
       - "{{ aussentemp + diff_lueften < innentemp }}"
+      - "{{ innentemp > min_innentemperatur }}"
     then:
       - repeat:
           for_each: !input mobile_devices
