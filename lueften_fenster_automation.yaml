@@ -1,6 +1,6 @@
 blueprint:
   name: Lüften & Fenster schließen erweitert
-  description: |
+  description: >
     Sendet Benachrichtigungen zum Lüften oder Schließen der Fenster,
     wenn die Außentemperatur im Verhältnis zur Innentemperatur liegt.
 
@@ -9,9 +9,11 @@ blueprint:
     - Auswahl aktiver Wochentage
     - Benachrichtigung bei Temperaturdifferenz
     - Optional für Lüften & Schließen
-    - Optional App- & Alexa-Benachrichtigung
-    - Optional anhaltende Benachrichtigung (persistent)
     - Auswahl mehrerer Geräte & Fenster-Sensoren
+    - Optional anhaltende Benachrichtigung (persistent)
+    - Optional Alexa-Sprachausgabe
+    - Optional Fenster-Überprüfung nach X Minuten
+
   domain: automation
   input:
     aussensensor:
@@ -57,20 +59,20 @@ blueprint:
           max: 10
           unit_of_measurement: "°C"
     min_temp_lueften:
-      name: Minimale Innentemperatur für Lüftung
+      name: Nur lüften, wenn Innentemperatur über ...
       default: 20
       selector:
         number:
           min: 0
           max: 30
           unit_of_measurement: "°C"
-    mobile_aktiv:
-      name: Mobile App Benachrichtigung aktivieren?
+    benachrichtigung_aktiv:
+      name: Companion App Benachrichtigungen aktivieren?
       default: true
       selector:
         boolean: {}
     mobile_devices:
-      name: Mobilgeräte für Benachrichtigung (wenn aktiviert)
+      name: Mobilgeräte für Benachrichtigung
       selector:
         device:
           integration: mobile_app
@@ -128,6 +130,19 @@ blueprint:
           integration: alexa_media
           domain: media_player
           multiple: true
+    fenster_offen_pruefen:
+      name: Fenster x Minuten offen prüfen?
+      default: false
+      selector:
+        boolean: {}
+    fenster_offen_dauer:
+      name: Zeit (x Minuten), nach der Fensterprüfung erfolgt
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 60
+          unit_of_measurement: "min"
 
 trigger:
   - platform: time
@@ -137,6 +152,11 @@ trigger:
   - platform: numeric_state
     entity_id: !input aussensensor
     above: !input innensensor
+  - platform: state
+    entity_id: !input fenster
+    to: "on"
+    for:
+      minutes: !input fenster_offen_dauer
 
 variables:
   aussensensor_entity: !input aussensensor
@@ -149,12 +169,12 @@ variables:
   diff_lueften: !input diff_lueften
   diff_schliessen: !input diff_schliessen
   min_temp_lueften: !input min_temp_lueften
-  mobile_aktiv: !input mobile_aktiv
-  mobile_devices: !input mobile_devices
   aktive_wochentage: !input active_days
   persistent_notification: !input persistent_notification
   alexa_aktiv: !input alexa_aktiv
   alexa_geraete: !input alexa_geraete
+  benachrichtigung_aktiv: !input benachrichtigung_aktiv
+  fenster_offen_pruefen: !input fenster_offen_pruefen
 
 condition:
   - condition: template
@@ -167,12 +187,12 @@ action:
   - if:
       - "{{ lueften_aktiv }}"
       - "{{ aussentemp + diff_lueften < innentemp }}"
-      - "{{ innentemp >= min_temp_lueften }}"
+      - "{{ innentemp > min_temp_lueften }}"
     then:
-      - if: "{{ mobile_aktiv }}"
+      - if: "{{ benachrichtigung_aktiv }}"
         then:
           - repeat:
-              for_each: "{{ mobile_devices }}"
+              for_each: !input mobile_devices
               sequence:
                 - variables:
                     notify_target: >
@@ -211,10 +231,10 @@ action:
         value_template: >
           {{ fensterliste | select('is_state', 'on') | list | count > 0 }}
     then:
-      - if: "{{ mobile_aktiv }}"
+      - if: "{{ benachrichtigung_aktiv }}"
         then:
           - repeat:
-              for_each: "{{ mobile_devices }}"
+              for_each: !input mobile_devices
               sequence:
                 - variables:
                     notify_target: >
@@ -236,7 +256,7 @@ action:
             data:
               message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
               title: "Fenster schließen"
-              notification_id: "fenster_hinweis" 
+              notification_id: "fenster_hinweis"
       - if: "{{ alexa_aktiv }}"
         then:
           - service: notify.alexa_media
