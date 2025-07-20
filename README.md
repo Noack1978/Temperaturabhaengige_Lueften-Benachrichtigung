@@ -12,6 +12,7 @@ Dieser Blueprint sendet Benachrichtigungen zum Lüften oder Fenster-Schließen b
 - Anhaltende Benachrichtigung (Companion App, optional)
 - Alexa-Sprachausgabe (alexa_media, optional)
 - Konfigurierbare Mindest-Innentemperatur zur Auslösung der Benachrichtigungen
+- **Neu**: Optionale Benachrichtigung, wenn Fenster länger als X Minuten offen bei zu warmer Außentemperatur
 
 ## 📥 Import in Home Assistant
 
