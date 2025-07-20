@@ -11,7 +11,7 @@ blueprint:
     - Optional für Lüften & Schließen
     - Auswahl mehrerer Geräte & Fenster-Sensoren
     - Optional anhaltende Benachrichtigung (persistent)
-    - Optional Alexa-Sprachausgabe
+    - Optional Alexa-Sprachausgabe (durch Helfer unterbinden "Bitte nicht stören")
     - Optional Fenster-Überprüfung nach X Minuten
 
   domain: automation
@@ -123,6 +123,13 @@ blueprint:
       default: false
       selector:
         boolean: {}
+    alexa_stumm_helfer:
+      name: Alexa nicht sprechen lassen, wenn dieser Helfer AN ist (optional)
+      default: []
+      selector:
+        entity:
+          domain: input_boolean
+          multiple: false
     alexa_geraete:
       name: Alexa Geräte (alexa_media)
       selector:
@@ -215,7 +222,15 @@ action:
               message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
               title: "Lüften empfohlen"
               notification_id: "lueften_hinweis"
-      - if: "{{ alexa_aktiv }}"
+      - if:
+        - "{{ alexa_aktiv }}"
+        - condition: or
+          conditions:
+            - condition: template
+              value_template: "{{ alexa_stumm_helfer == [] }}"
+            - condition: template
+              value_template: >
+                {{ not is_state(alexa_stumm_helfer, 'on') }}
         then:
           - service: notify.alexa_media
             data:
@@ -230,6 +245,10 @@ action:
       - condition: template
         value_template: >
           {{ fensterliste | select('is_state', 'on') | list | count > 0 }}
+      #Diese Bedingung verhindert eine Benachrichtigung, wenn nicht stören an ist
+      - condition: state
+        entity_id: input_boolean.nicht_storen
+        state: "off"
     then:
       - if: "{{ benachrichtigung_aktiv }}"
         then:
@@ -257,7 +276,15 @@ action:
               message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
               title: "Fenster schließen"
               notification_id: "fenster_hinweis"
-      - if: "{{ alexa_aktiv }}"
+      - if:
+        - "{{ alexa_aktiv }}"
+        - condition: or
+          conditions:
+            - condition: template
+              value_template: "{{ alexa_stumm_helfer == [] }}"
+            - condition: template
+              value_template: >
+                {{ not is_state(alexa_stumm_helfer, 'on') }}
         then:
           - service: notify.alexa_media
             data:
