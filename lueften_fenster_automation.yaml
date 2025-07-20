@@ -9,10 +9,9 @@ blueprint:
     - Auswahl aktiver Wochentage
     - Benachrichtigung bei Temperaturdifferenz
     - Optional für Lüften & Schließen
-    - Auswahl mehrerer Geräte & Fenster-Sensoren
+    - Optional App- & Alexa-Benachrichtigung
     - Optional anhaltende Benachrichtigung (persistent)
-    - Optional Alexa-Sprachausgabe
-    - Mindestwert für Innentemperatur bei Lüftung
+    - Auswahl mehrerer Geräte & Fenster-Sensoren
   domain: automation
   input:
     aussensensor:
@@ -57,16 +56,21 @@ blueprint:
           min: 0
           max: 10
           unit_of_measurement: "°C"
-    min_innentemperatur:
-      name: Mindest-Innentemperatur für Lüftung
+    min_temp_lueften:
+      name: Minimale Innentemperatur für Lüftung
       default: 20
       selector:
         number:
-          min: 10
+          min: 0
           max: 30
           unit_of_measurement: "°C"
+    mobile_aktiv:
+      name: Mobile App Benachrichtigung aktivieren?
+      default: true
+      selector:
+        boolean: {}
     mobile_devices:
-      name: Mobilgeräte für Benachrichtigung
+      name: Mobilgeräte für Benachrichtigung (wenn aktiviert)
       selector:
         device:
           integration: mobile_app
@@ -144,11 +148,13 @@ variables:
   schliessen_aktiv: !input schliessen_aktiv
   diff_lueften: !input diff_lueften
   diff_schliessen: !input diff_schliessen
+  min_temp_lueften: !input min_temp_lueften
+  mobile_aktiv: !input mobile_aktiv
+  mobile_devices: !input mobile_devices
   aktive_wochentage: !input active_days
   persistent_notification: !input persistent_notification
   alexa_aktiv: !input alexa_aktiv
   alexa_geraete: !input alexa_geraete
-  min_innentemperatur: !input min_innentemperatur
 
 condition:
   - condition: template
@@ -161,25 +167,27 @@ action:
   - if:
       - "{{ lueften_aktiv }}"
       - "{{ aussentemp + diff_lueften < innentemp }}"
-      - "{{ innentemp > min_innentemperatur }}"
+      - "{{ innentemp >= min_temp_lueften }}"
     then:
-      - repeat:
-          for_each: !input mobile_devices
-          sequence:
-            - variables:
-                notify_target: >
-                  {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                     | lower
-                     | replace('ä', 'a')
-                     | replace('ö', 'o')
-                     | replace('ü', 'u')
-                     | replace('ß', 'ss')
-                     | replace("'", '_')
-                     | replace(' ', '_')
-                     | regex_replace(find='[^a-z0-9_]', replace='') }}
-            - service: "{{ notify_target }}"
-              data:
-                message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+      - if: "{{ mobile_aktiv }}"
+        then:
+          - repeat:
+              for_each: "{{ mobile_devices }}"
+              sequence:
+                - variables:
+                    notify_target: >
+                      {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                         | lower
+                         | replace('ä', 'a')
+                         | replace('ö', 'o')
+                         | replace('ü', 'u')
+                         | replace('ß', 'ss')
+                         | replace("'", '_')
+                         | replace(' ', '_')
+                         | regex_replace(find='[^a-z0-9_]', replace='') }}
+                - service: "{{ notify_target }}"
+                  data:
+                    message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
       - if: "{{ persistent_notification }}"
         then:
           - service: persistent_notification.create
@@ -203,23 +211,25 @@ action:
         value_template: >
           {{ fensterliste | select('is_state', 'on') | list | count > 0 }}
     then:
-      - repeat:
-          for_each: !input mobile_devices
-          sequence:
-            - variables:
-                notify_target: >
-                  {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                     | lower
-                     | replace('ä', 'a')
-                     | replace('ö', 'o')
-                     | replace('ü', 'u')
-                     | replace('ß', 'ss')
-                     | replace("'", '_')
-                     | replace(' ', '_')
-                     | regex_replace(find='[^a-z0-9_]', replace='') }}
-            - service: "{{ notify_target }}"
-              data:
-                message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+      - if: "{{ mobile_aktiv }}"
+        then:
+          - repeat:
+              for_each: "{{ mobile_devices }}"
+              sequence:
+                - variables:
+                    notify_target: >
+                      {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                         | lower
+                         | replace('ä', 'a')
+                         | replace('ö', 'o')
+                         | replace('ü', 'u')
+                         | replace('ß', 'ss')
+                         | replace("'", '_')
+                         | replace(' ', '_')
+                         | regex_replace(find='[^a-z0-9_]', replace='') }}
+                - service: "{{ notify_target }}"
+                  data:
+                    message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
       - if: "{{ persistent_notification }}"
         then:
           - service: persistent_notification.create
