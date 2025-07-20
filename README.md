@@ -8,7 +8,7 @@ Dieser Blueprint sendet Benachrichtigungen zum Lüften oder Fenster-Schließen b
 - Zwei konfigurierbare Uhrzeiten (z. B. morgens & abends)
 - Auswahl aktiver Wochentage
 - Konfigurierbare Temperaturdifferenzen für Lüften und Schließen
-- Mehrfachauswahl von mobilen Geräten für Push-Nachrichten
+- Mehrfachauswahl von mobilen Geräten für Push-Nachrichten (optional) 
 - Anhaltende Benachrichtigung (Companion App, optional)
 - Alexa-Sprachausgabe (alexa_media, optional)
 - Konfigurierbare Mindest-Innentemperatur zur Auslösung der Benachrichtigungen
