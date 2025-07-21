@@ -154,16 +154,16 @@ blueprint:
 trigger:
   - platform: time
     at: !input trigger_time_1
+    id: lueften
   - platform: time
     at: !input trigger_time_2
-  - platform: numeric_state
-    entity_id: !input aussensensor
-    above: !input innensensor
+    id: lueften
   - platform: state
     entity_id: !input fenster
     to: "on"
     for:
       minutes: !input fenster_offen_dauer
+    id: schliessen
 
 variables:
   aussensensor_entity: !input aussensensor
@@ -182,6 +182,7 @@ variables:
   alexa_geraete: !input alexa_geraete
   benachrichtigung_aktiv: !input benachrichtigung_aktiv
   fenster_offen_pruefen: !input fenster_offen_pruefen
+  alexa_stumm_helfer: !input alexa_stumm_helfer
 
 condition:
   - condition: template
@@ -191,106 +192,79 @@ condition:
       {{ map[day] in aktive_wochentage }}
 
 action:
-  - if:
-      - "{{ lueften_aktiv }}"
-      - "{{ aussentemp + diff_lueften < innentemp }}"
-      - "{{ innentemp > min_temp_lueften }}"
-    then:
-      - if: "{{ benachrichtigung_aktiv }}"
-        then:
-          - repeat:
-              for_each: !input mobile_devices
-              sequence:
-                - variables:
-                    notify_target: >
-                      {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                         | lower
-                         | replace('ä', 'a')
-                         | replace('ö', 'o')
-                         | replace('ü', 'u')
-                         | replace('ß', 'ss')
-                         | replace("'", '_')
-                         | replace(' ', '_')
-                         | regex_replace(find='[^a-z0-9_]', replace='') }}
-                - service: "{{ notify_target }}"
+  - choose:
+      - conditions: ["{{ trigger.id == 'lueften' }}", "{{ lueften_aktiv }}", "{{ aussentemp + diff_lueften < innentemp }}", "{{ innentemp > min_temp_lueften }}"]
+        sequence:
+          - if: "{{ benachrichtigung_aktiv }}"
+            then:
+              - repeat:
+                  for_each: !input mobile_devices
+                  sequence:
+                    - variables:
+                        notify_target: >
+                          {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                             | lower
+                             | replace('ä', 'a')
+                             | replace('ö', 'o')
+                             | replace('ü', 'u')
+                             | replace('ß', 'ss')
+                             | replace("'", '_')
+                             | replace(' ', '_')
+                             | regex_replace(find='[^a-z0-9_]', replace='') }}
+                    - service: "{{ notify_target }}"
+                      data:
+                        message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+          - if: "{{ persistent_notification }}"
+            then:
+              - service: persistent_notification.create
+                data:
+                  message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
+                  title: "Lüften empfohlen"
+                  notification_id: "lueften_hinweis"
+          - if: ["{{ alexa_aktiv }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
+            then:
+              - service: notify.alexa_media
+                data:
+                  target: !input alexa_geraete
+                  message: "Es ist Zeit zu lüften. Draußen ist es kühler als drinnen."
                   data:
-                    message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
-      - if: "{{ persistent_notification }}"
-        then:
-          - service: persistent_notification.create
-            data:
-              message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
-              title: "Lüften empfohlen"
-              notification_id: "lueften_hinweis"
-      - if:
-        - "{{ alexa_aktiv }}"
-        - condition: or
-          conditions:
-            - condition: template
-              value_template: "{{ alexa_stumm_helfer == [] }}"
-            - condition: template
-              value_template: >
-                {{ not is_state(alexa_stumm_helfer, 'on') }}
-        then:
-          - service: notify.alexa_media
-            data:
-              target: !input alexa_geraete
-              message: "Es ist Zeit zu lüften. Draußen ist es kühler als drinnen."
-              data:
-                type: tts
+                    type: tts
 
-  - if:
-      - "{{ schliessen_aktiv }}"
-      - "{{ aussentemp - diff_schliessen > innentemp }}"
-      - condition: template
-        value_template: >
-          {{ fensterliste | select('is_state', 'on') | list | count > 0 }}
-      #Diese Bedingung verhindert eine Benachrichtigung, wenn nicht stören an ist
-      - condition: state
-        entity_id: input_boolean.nicht_storen
-        state: "off"
-    then:
-      - if: "{{ benachrichtigung_aktiv }}"
-        then:
-          - repeat:
-              for_each: !input mobile_devices
-              sequence:
-                - variables:
-                    notify_target: >
-                      {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
-                         | lower
-                         | replace('ä', 'a')
-                         | replace('ö', 'o')
-                         | replace('ü', 'u')
-                         | replace('ß', 'ss')
-                         | replace("'", '_')
-                         | replace(' ', '_')
-                         | regex_replace(find='[^a-z0-9_]', replace='') }}
-                - service: "{{ notify_target }}"
+      - conditions: ["{{ trigger.id == 'schliessen' }}", "{{ schliessen_aktiv }}", "{{ aussentemp - diff_schliessen > innentemp }}", "{{ fensterliste | select('is_state', 'on') | list | count > 0 }}"]
+        sequence:
+          - if: "{{ benachrichtigung_aktiv }}"
+            then:
+              - repeat:
+                  for_each: !input mobile_devices
+                  sequence:
+                    - variables:
+                        notify_target: >
+                          {{ 'notify.mobile_app_' ~ device_attr(repeat.item, 'name')
+                             | lower
+                             | replace('ä', 'a')
+                             | replace('ö', 'o')
+                             | replace('ü', 'u')
+                             | replace('ß', 'ss')
+                             | replace("'", '_')
+                             | replace(' ', '_')
+                             | regex_replace(find='[^a-z0-9_]', replace='') }}
+                    - service: "{{ notify_target }}"
+                      data:
+                        message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+          - if: "{{ persistent_notification }}"
+            then:
+              - service: persistent_notification.create
+                data:
+                  message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
+                  title: "Fenster schließen"
+                  notification_id: "fenster_hinweis"
+          - if: ["{{ alexa_aktiv }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
+            then:
+              - service: notify.alexa_media
+                data:
+                  target: !input alexa_geraete
+                  message: "Bitte Fenster schließen. Draußen ist es wärmer als drinnen."
                   data:
-                    message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
-      - if: "{{ persistent_notification }}"
-        then:
-          - service: persistent_notification.create
-            data:
-              message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
-              title: "Fenster schließen"
-              notification_id: "fenster_hinweis"
-      - if:
-        - "{{ alexa_aktiv }}"
-        - condition: or
-          conditions:
-            - condition: template
-              value_template: "{{ alexa_stumm_helfer == [] }}"
-            - condition: template
-              value_template: >
-                {{ not is_state(alexa_stumm_helfer, 'on') }}
-        then:
-          - service: notify.alexa_media
-            data:
-              target: !input alexa_geraete
-              message: "Bitte Fenster schließen. Draußen ist es wärmer als drinnen."
-              data:
-                type: tts
+                    type: tts
 
 mode: single
