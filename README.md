@@ -18,7 +18,7 @@ Dieser Blueprint sendet Benachrichtigungen zum Lüften oder Fenster-Schließen b
 
 Du kannst diesen Blueprint direkt über My Home Assistant importieren:
 
-[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https://github.com/Noack1978/Home-assistant-blueprints/blob/main/lueften_fenster_automation.yaml) 
+[![Open your Home Assistant instance and show the blueprint import dialog with a specific blueprint pre-filled.](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fmy.home-assistant.io%2Fredirect%2Fblueprint_import%2F%3Fblueprint_url%3Dhttps%3A%2F%2Fgithub.com%2FNoack1978%2FHome-assistant-blueprints%2Fblob%2Fmain%2Flueften_fenster_automation.yamlueften_fenster_automation.yaml)
 
 Oder folgende URL kopieren und in home assistant manuell importieren
 ```
