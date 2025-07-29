@@ -150,6 +150,14 @@ blueprint:
           min: 1
           max: 60
           unit_of_measurement: "min"
+    max_fenster_geoeffnet:  # ➕ NEU
+      name: Max. geöffnete Fenster bei Lüften
+      description: Wenn mindestens so viele Fenster geöffnet sind, wird nicht mehr zum Lüften benachrichtigt.
+      default: 2
+      selector:
+        number:
+          min: 0
+          max: 10
 
 trigger:
   - platform: time
@@ -183,6 +191,7 @@ variables:
   benachrichtigung_aktiv: !input benachrichtigung_aktiv
   fenster_offen_pruefen: !input fenster_offen_pruefen
   alexa_stumm_helfer: !input alexa_stumm_helfer
+  max_fenster_geoeffnet: !input max_fenster_geoeffnet  # ➕ NEU
 
 condition:
   - condition: template
@@ -193,7 +202,12 @@ condition:
 
 action:
   - choose:
-      - conditions: ["{{ trigger.id == 'lueften' }}", "{{ lueften_aktiv }}", "{{ aussentemp + diff_lueften < innentemp }}", "{{ innentemp > min_temp_lueften }}"]
+      - conditions:
+          - "{{ trigger.id == 'lueften' }}"
+          - "{{ lueften_aktiv }}"
+          - "{{ aussentemp + diff_lueften < innentemp }}"
+          - "{{ innentemp > min_temp_lueften }}"
+          - "{{ fensterliste | select('is_state', 'on') | list | count < max_fenster_geoeffnet }}"  # ➕ NEU
         sequence:
           - if: "{{ benachrichtigung_aktiv }}"
             then:
@@ -230,7 +244,11 @@ action:
                   data:
                     type: tts
 
-      - conditions: ["{{ trigger.id == 'schliessen' }}", "{{ schliessen_aktiv }}", "{{ aussentemp - diff_schliessen > innentemp }}", "{{ fensterliste | select('is_state', 'on') | list | count > 0 }}"]
+      - conditions:
+          - "{{ trigger.id == 'schliessen' }}"
+          - "{{ schliessen_aktiv }}"
+          - "{{ aussentemp - diff_schliessen > innentemp }}"
+          - "{{ fensterliste | select('is_state', 'on') | list | count > 0 }}"
         sequence:
           - if: "{{ benachrichtigung_aktiv }}"
             then:
