@@ -1,5 +1,6 @@
 blueprint:
   name: Lüften & Fenster schließen erweitert
+  source_url: https://github.com/Noack1978/Temperaturabhaengige_Lueften-Benachrichtigung/blob/main/lueften_fenster_automation.yaml
   description: >
     Sendet Benachrichtigungen zum Lüften oder Schließen der Fenster,
     wenn die Außentemperatur im Verhältnis zur Innentemperatur liegt.
