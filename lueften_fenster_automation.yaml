@@ -133,6 +133,7 @@ blueprint:
           multiple: false
     alexa_geraete:
       name: Alexa Geräte (alexa_media)
+      default: []
       selector:
         entity:
           integration: alexa_media
@@ -236,11 +237,11 @@ action:
                   message: "Es ist Zeit zu lüften, draußen ist es kühler als drinnen!"
                   title: "Lüften empfohlen"
                   notification_id: "lueften_hinweis"
-          - if: ["{{ alexa_aktiv }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
+          - if: ["{{ alexa_aktiv }}", "{{ alexa_geraete | count > 0 }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
             then:
               - service: notify.alexa_media
                 data:
-                  target: !input alexa_geraete
+                  target: "{{ alexa_geraete }}"
                   message: "Es ist Zeit zu lüften. Draußen ist es kühler als drinnen."
                   data:
                     type: tts
@@ -277,11 +278,11 @@ action:
                   message: "Bitte Fenster schließen, draußen ist es wärmer als drinnen!"
                   title: "Fenster schließen"
                   notification_id: "fenster_hinweis"
-          - if: ["{{ alexa_aktiv }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
+          - if: ["{{ alexa_aktiv }}", "{{ alexa_geraete | count > 0 }}", "{{ alexa_stumm_helfer == [] or not is_state(alexa_stumm_helfer, 'on') }}"]
             then:
               - service: notify.alexa_media
                 data:
-                  target: !input alexa_geraete
+                  target: "{{ alexa_geraete }}"
                   message: "Bitte Fenster schließen. Draußen ist es wärmer als drinnen."
                   data:
                     type: tts
